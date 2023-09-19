@@ -11,15 +11,21 @@ def processMatch(match):
     #The format of the dictionary is player1, player2, player2score, player2score
     #If player1 or player2 doesn't exist in players, add them
     if match['player1'] not in players:
-        players[match['player1']] = {'wins': 0, 'losses': 0, 'matches': 0, 'pointsFor': 0, 'pointsAgainst': 0, 'opponentRating': 0, 'rating': 1500}
+        players[match['player1']] = {'wins': 0, 'losses': 0, 'matches': 0, 'pointsFor': 0, 'pointsAgainst': 0, 'opponentRating': 0, 'opponents': [], 'sos': 0, 'rating': 1500}
     if match['player2'] not in players:
-        players[match['player2']] = {'wins': 0, 'losses': 0, 'matches': 0, 'pointsFor': 0, 'pointsAgainst': 0, 'opponentRating': 0, 'rating': 1500}
+        players[match['player2']] = {'wins': 0, 'losses': 0, 'matches': 0, 'pointsFor': 0, 'pointsAgainst': 0, 'opponentRating': 0, 'opponents': [], 'sos': 0, 'rating': 1500}
     #Calculate the expected score for each player
     expectedScore1 = 1 / (1 + 10 ** ((players[match['player2']]['rating'] - players[match['player1']]['rating']) / 400))
     expectedScore2 = 1 / (1 + 10 ** ((players[match['player1']]['rating'] - players[match['player2']]['rating']) / 400))
     #Calculate the actual score for each player
     actualScore1 = 1 if match['player1score'] > match['player2score'] else 0
     actualScore2 = 1 if match['player2score'] > match['player1score'] else 0
+    #Update the total opponent rating for each player
+    players[match['player1']]['opponentRating'] += players[match['player2']]['rating']
+    players[match['player2']]['opponentRating'] += players[match['player1']]['rating']
+    #Add the opponent's to a list of opponents for each player
+    players[match['player1']]['opponents'].append(match['player2'])
+    players[match['player2']]['opponents'].append(match['player1'])
     #Calculate the new rating for each player
     players[match['player1']]['rating'] += 32 * (actualScore1 - expectedScore1)
     players[match['player2']]['rating'] += 32 * (actualScore2 - expectedScore2)
@@ -36,9 +42,6 @@ def processMatch(match):
     players[match['player1']]['pointsAgainst'] += match['player2score']
     players[match['player2']]['pointsFor'] += match['player2score']
     players[match['player2']]['pointsAgainst'] += match['player1score']
-    #Update the total opponent rating for each player
-    players[match['player1']]['opponentRating'] += players[match['player2']]['rating']
-    players[match['player2']]['opponentRating'] += players[match['player1']]['rating']
 
 
 #Function to predict the score of a match given the players' ratings
@@ -65,6 +68,9 @@ with open('scores.json') as json_file:
     sortedPlayers = sorted(players.items(), key=lambda x: x[1]['rating'], reverse=True)
     #Filter out players that have played less than 5 games
     sortedPlayers = list(filter(lambda x: x[1]['wins'] + x[1]['losses'] >= 5, sortedPlayers))
+    #Calculate the average opponent rating for each player's last 5 games
+    for player in sortedPlayers:
+        player[1]['sos'] = sum([players[opponent]['rating'] for opponent in player[1]['opponents'][-5:]]) / 5
     #Print the results with the rating rounded to the nearest integer
     for player in sortedPlayers:
         print(player[0] + ": " + str(round(player[1]['rating'])))

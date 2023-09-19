@@ -1,9 +1,32 @@
 import pandas as pd
 import json
 
+#Active players list to filter out inactive players
+active_players = [
+    'Stuart Wyse',
+    'Forrest Thompson',
+    'Greg Fisher',
+    'Jacob Kroger',
+    'Trung Nguyen',
+    'Jake Westrich',
+    'Matthew Sweeterman',
+    'Joe Snider',
+    'Grayson Getz',
+    'Mick Ward',
+    'Greg Kauffman',
+    'Sammy Stampley',
+    'Dustin Mitchell',
+    'Oliver Graham'
+]
+
 #Pull json data from results.json and apply it to the data variable
 with open('results.json') as f:
     data = json.load(f)
+
+#Filter inactive players out of the data
+for player in data.copy():
+    if player not in active_players:
+        del data[player]
 
 # Assuming `data` is your JSON object
 df = pd.DataFrame.from_dict(data, orient='index')
@@ -25,8 +48,11 @@ def assign_tier(rating):
         return 'D'
     else:
         return 'F'
+    
+# Clear the tier column
+df['tier'] = ''
 
-# Apply the function to assign tiers
+# Apply the function to assign tiers if the player is active otherwise put NA
 df['tier'] = df['rating'].apply(assign_tier)
 
 # Sort the dataframe by rating
