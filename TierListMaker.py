@@ -6,19 +6,19 @@ active_players = [
     'Jack Riley',
     'Greg Kauffman',
     'Stuart Wyse',
-    'Grayson Getz'
-    'Jacob Kroger'
-    'Sammy Stampley'
-    'Forrest Thompson'
-    'Jake Westrich'
-    'Greg Fisher'
-    'Dustin Mitchell'
-    'Joe Snider'
-    'Hao Truong'
-    'Mick Ward'
-    'Matthew Sweeterman'
-    'Oliver Graham'
-    'Binh Luong'
+    'Grayson Getz',
+    'Jacob Kroger',
+    'Sammy Stampley',
+    'Forrest Thompson',
+    'Jake Westrich',
+    'Greg Fisher',
+    'Dustin Mitchell',
+    'Joe Snider',
+    'Hao Truong',
+    'Mick Ward',
+    'Matthew Sweeterman',
+    'Oliver Graham',
+    'Binh Luong',
     'Randy Buka'
 ]
 
