@@ -3,20 +3,23 @@ import json
 
 #Active players list to filter out inactive players
 active_players = [
-    'Stuart Wyse',
-    'Forrest Thompson',
-    'Greg Fisher',
-    'Jacob Kroger',
-    'Trung Nguyen',
-    'Jake Westrich',
-    'Matthew Sweeterman',
-    'Joe Snider',
-    'Grayson Getz',
-    'Mick Ward',
+    'Jack Riley',
     'Greg Kauffman',
-    'Sammy Stampley',
-    'Dustin Mitchell',
+    'Stuart Wyse',
+    'Grayson Getz'
+    'Jacob Kroger'
+    'Sammy Stampley'
+    'Forrest Thompson'
+    'Jake Westrich'
+    'Greg Fisher'
+    'Dustin Mitchell'
+    'Joe Snider'
+    'Hao Truong'
+    'Mick Ward'
+    'Matthew Sweeterman'
     'Oliver Graham'
+    'Binh Luong'
+    'Randy Buka'
 ]
 
 #Pull json data from results.json and apply it to the data variable
