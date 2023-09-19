@@ -5,6 +5,9 @@ players = {}
 
 #Function to process each match
 def processMatch(match):
+    #If counted is 0, skip this match
+    if match['counted'] == 0:
+        return
     #The format of the dictionary is player1, player2, player2score, player2score
     #If player1 or player2 doesn't exist in players, add them
     if match['player1'] not in players:
