@@ -2256,9 +2256,9 @@
  {
    "player1": "Binh Luong",
    "player2": "Joe Snider",
-   "player1score": null,
-   "player2score": null,
-   "counted": 0
+   "player1score": 10,
+   "player2score": 21,
+   "counted": 1
  },
  {
    "player1": "Randy Buka",
@@ -2438,9 +2438,9 @@
  {
    "player1": "Hao Truong",
    "player2": "Stuart Wyse",
-   "player1score": null,
-   "player2score": null,
-   "counted": 0
+   "player1score": 15,
+   "player2score": 21,
+   "counted": 1
  },
  {
    "player1": "Joe Snider",
@@ -2459,9 +2459,9 @@
  {
    "player1": "Sammy Stampley",
    "player2": "Grayson Getz",
-   "player1score": null,
-   "player2score": null,
-   "counted": 0
+   "player1score": 21,
+   "player2score": 16,
+   "counted": 1
  },
  {
    "player1": "Binh Luong",
@@ -2557,16 +2557,16 @@
  {
    "player1": "Forrest Thompson",
    "player2": "Dustin Mitchell",
-   "player1score": null,
-   "player2score": null,
-   "counted": 0
+   "player1score": 21,
+   "player2score": 5,
+   "counted": 1
  },
  {
    "player1": "Hao Truong",
    "player2": "Binh Luong",
-   "player1score": null,
-   "player2score": null,
-   "counted": 0
+   "player1score": 15,
+   "player2score": 21,
+   "counted": 1
  },
  {
    "player1": "Jack Riley",
@@ -2578,9 +2578,9 @@
  {
    "player1": "Greg Fisher",
    "player2": "Joe Snider",
-   "player1score": null,
-   "player2score": null,
-   "counted": 0
+   "player1score": 5,
+   "player2score": 21,
+   "counted": 1
  },
  {
    "player1": "Jake Westrich",
@@ -2622,6 +2622,104 @@
    "player2": "Forrest Thompson",
    "player1score": 21,
    "player2score": 6,
+   "counted": 1
+ },
+ {
+   "player1": "Jake Westrich",
+   "player2": "Dustin Mitchell",
+   "player1score": null,
+   "player2score": null,
+   "counted": 0
+ },
+ {
+   "player1": "Jacob Kroger",
+   "player2": "Binh Luong",
+   "player1score": 21,
+   "player2score": 3,
+   "counted": 1
+ },
+ {
+   "player1": "Forrest Thompson",
+   "player2": "Hao Truong",
+   "player1score": 21,
+   "player2score": 20,
+   "counted": 1
+ },
+ {
+   "player1": "Greg Kauffman",
+   "player2": "Randy Buka",
+   "player1score": 21,
+   "player2score": 10,
+   "counted": 1
+ },
+ {
+   "player1": "Grayson Getz",
+   "player2": "Greg Fisher",
+   "player1score": 13,
+   "player2score": 21,
+   "counted": 1
+ },
+ {
+   "player1": "Stuart Wyse",
+   "player2": "Oliver Graham",
+   "player1score": 21,
+   "player2score": 19,
+   "counted": 1
+ },
+ {
+   "player1": "Joe Snider",
+   "player2": "Mick Ward",
+   "player1score": 21,
+   "player2score": 7,
+   "counted": 1
+ },
+ {
+   "player1": "Jack Riley",
+   "player2": "Jake Westrich",
+   "player1score": 13,
+   "player2score": 21,
+   "counted": 1
+ },
+ {
+   "player1": "Jacob Kroger",
+   "player2": "Forrest Thompson",
+   "player1score": 21,
+   "player2score": 8,
+   "counted": 1
+ },
+ {
+   "player1": "Greg Kauffman",
+   "player2": "Greg Fisher",
+   "player1score": 21,
+   "player2score": 8,
+   "counted": 1
+ },
+ {
+   "player1": "Stuart Wyse",
+   "player2": "Joe Snider",
+   "player1score": 15,
+   "player2score": 21,
+   "counted": 1
+ },
+ {
+   "player1": "Jake Westrich",
+   "player2": "Jacob Kroger",
+   "player1score": 21,
+   "player2score": 11,
+   "counted": 1
+ },
+ {
+   "player1": "Greg Kauffman",
+   "player2": "Joe Snider",
+   "player1score": 21,
+   "player2score": 14,
+   "counted": 1
+ },
+ {
+   "player1": "Jake Westrich",
+   "player2": "Greg Kauffman",
+   "player1score": 21,
+   "player2score": 15,
    "counted": 1
  }
 ]
