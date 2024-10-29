@@ -8,18 +8,20 @@ active_players = [
     'Stuart Wyse',
     'Grayson Getz',
     'Jacob Kroger',
-    'Sammy Stampley',
     'Forrest Thompson',
     'Jake Westrich',
     'Greg Fisher',
-    'Dustin Mitchell',
     'Joe Snider',
     'Hao Truong',
     'Mick Ward',
-    'Matthew Sweeterman',
     'Oliver Graham',
     'Binh Luong',
-    'Randy Buka'
+    'Randy Buka',
+    'Brad Dee',
+    'Matthew Sweeterman',
+    'Cody Phillips',
+    'Alex Zoumaya',
+    'Ryan Strotman',
 ]
 
 #Pull json data from results.json and apply it to the data variable

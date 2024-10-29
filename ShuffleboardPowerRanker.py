@@ -3,6 +3,15 @@ import json
 #Dictionary holding each player's name, wins, losses, and rating
 players = {}
 
+#Dictionary holding all matches
+matches = []
+
+#Prediction accuracy [correct, incorrect]
+accuracy = [0, 0]
+
+#Prediction closeness [exact, within 3 combined, within 5 combined, within 10 combined, within 15 combined, outside 15 combined, total]
+closeness = [0, 0, 0, 0, 0, 0, 0]
+
 #Function to process each match
 def processMatch(match):
     #If counted is 0, skip this match
@@ -20,12 +29,43 @@ def processMatch(match):
     #Calculate the actual score for each player
     actualScore1 = 1 if match['player1score'] > match['player2score'] else 0
     actualScore2 = 1 if match['player2score'] > match['player1score'] else 0
+
+    predictedScore1 = predictMatch(match['player1'], match['player2'])[0]
+    predictedScore2 = predictMatch(match['player1'], match['player2'])[1]
+    matchData = {
+        'player1': match['player1'],
+        'player2': match['player2'],
+        'player1score': match['player1score'],
+        'player2score': match['player2score'],
+        'predictedScore1': str(predictedScore1),
+        'predictedScore2': str(predictedScore2),
+        'difference1': actualScore1 - expectedScore1,
+        'difference2': actualScore2 - expectedScore2,
+        'upsetValue': (predictedScore1 - predictedScore2) - (match['player1score'] - match['player2score'])
+    }
+    matches.append(matchData)
+    #If matches has over 303 items, calculate the prediction accuracy
+    if len(matches) > 303:
+        accuracy[0] += 1 if (actualScore1 > actualScore2 and expectedScore1 > expectedScore2) or (actualScore1 < actualScore2 and expectedScore1 < expectedScore2) else 0
+        accuracy[1] += 1 if (actualScore1 > actualScore2 and expectedScore1 < expectedScore2) or (actualScore1 < actualScore2 and expectedScore1 > expectedScore2) else 0
+        closeness[0] += 1 if abs(matchData['upsetValue']) == 0 else 0
+        closeness[1] += 1 if abs(matchData['upsetValue']) <= 3 else 0
+        closeness[2] += 1 if abs(matchData['upsetValue']) <= 5 else 0
+        closeness[3] += 1 if abs(matchData['upsetValue']) <= 10 else 0
+        closeness[4] += 1 if abs(matchData['upsetValue']) <= 15 else 0
+        closeness[5] += 1 if abs(matchData['upsetValue']) > 15 else 0
+        closeness[6] += 1
+        #if (abs(matchData['upsetValue']) == 0):
+            #print(matchData)
+        if (abs(matchData['upsetValue']) >= 15):
+            print(str(matchData['upsetValue']) + ' : ' + matchData['player1'] + ' ' + str(matchData['player1score']) + ' (' + str(matchData['predictedScore1']) + ') ' + ' (' + str(matchData['predictedScore2']) + ') ' + str(matchData['player2score']) + ' ' + matchData['player2'])
     #Update the total opponent rating for each player
     players[match['player1']]['opponentRating'] += players[match['player2']]['rating']
     players[match['player2']]['opponentRating'] += players[match['player1']]['rating']
     #Add the opponent's to a list of opponents for each player
     players[match['player1']]['opponents'].append(match['player2'])
     players[match['player2']]['opponents'].append(match['player1'])
+
     #Calculate the new rating for each player
     players[match['player1']]['rating'] += 32 * (actualScore1 - expectedScore1)
     players[match['player2']]['rating'] += 32 * (actualScore2 - expectedScore2)
@@ -75,6 +115,8 @@ with open('scores.json') as json_file:
     for player in sortedPlayers:
         print(player[0] + ": " + str(round(player[1]['rating'])))
     #Export the rating results to a json file
+    print("Accuracy: " + str(accuracy[0] / (accuracy[0] + accuracy[1])))
+    print("Closeness: " + str(closeness[0] / closeness[6]) + " " + str(closeness[1] / closeness[6]) + " " + str(closeness[2] / closeness[6]) + " " + str(closeness[3] / closeness[6]) + " " + str(closeness[4] / closeness[6]) + " " + str(closeness[5] / closeness[6]))
     with open('results.json', 'w') as outfile:
         json.dump(players, outfile)
 
