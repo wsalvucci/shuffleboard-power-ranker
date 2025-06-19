@@ -1,0 +1,5 @@
+# Core dependencies
+pandas>=1.3.0
+
+# Note: All other imports (json, sqlite3, csv) are built-in Python modules
+# and do not need to be installed separately

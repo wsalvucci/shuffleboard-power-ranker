@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shuffleboard Power Rankings</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🏓 Shuffleboard Power Rankings</h1>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Total Players</h3>
+                <p id="totalPlayers">Loading...</p>
+            </div>
+            <div class="stat-card">
+                <h3>Total Matches</h3>
+                <p id="totalMatches">Loading...</p>
+            </div>
+            <div class="stat-card">
+                <h3>Current Season</h3>
+                <p id="currentSeason">Loading...</p>
+            </div>
+        </div>
+
+        <h2>Active Players (Current Season)</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Player</th>
+                    <th>Rating</th>
+                    <th>Wins</th>
+                    <th>Losses</th>
+                    <th>Win %</th>
+                    <th>Points For</th>
+                    <th>Points Against</th>
+                    <th>History</th>
+                </tr>
+            </thead>
+            <tbody id="activeRankingsTable">
+                <tr>
+                    <td colspan="9" style="text-align: center;">Loading active rankings...</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>All Players</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Player</th>
+                    <th>Rating</th>
+                    <th>Wins</th>
+                    <th>Losses</th>
+                    <th>Win %</th>
+                    <th>Points For</th>
+                    <th>Points Against</th>
+                    <th>History</th>
+                </tr>
+            </thead>
+            <tbody id="allRankingsTable">
+                <tr>
+                    <td colspan="9" style="text-align: center;">Loading all rankings...</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>Rating Progression Over Time</h2>
+        <div style="position: relative; height: 600px; width: 100%; margin: 20px 0;">
+            <canvas id="ratingChart"></canvas>
+        </div>
+
+        <h2>Match Prediction Tool</h2>
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <div style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+                <div>
+                    <label for="player1Select" style="display: block; margin-bottom: 5px; font-weight: bold;">Player 1:</label>
+                    <select id="player1Select" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; min-width: 150px;">
+                        <option value="">Select a player...</option>
+                    </select>
+                </div>
+                <div style="font-size: 18px; font-weight: bold;">vs</div>
+                <div>
+                    <label for="player2Select" style="display: block; margin-bottom: 5px; font-weight: bold;">Player 2:</label>
+                    <select id="player2Select" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; min-width: 150px;">
+                        <option value="">Select a player...</option>
+                    </select>
+                </div>
+                <button id="predictBtn" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Predict Match</button>
+            </div>
+            <div id="predictionResult" style="margin-top: 20px; padding: 15px; background: white; border-radius: 4px; display: none;">
+                <h3 style="margin-top: 0;">Predicted Score:</h3>
+                <div id="predictionScore" style="font-size: 24px; font-weight: bold; text-align: center;"></div>
+            </div>
+        </div>
+
+        <h2>Algorithm Performance Metrics</h2>
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+                <div style="background: white; padding: 15px; border-radius: 4px; text-align: center;">
+                    <h3 style="margin-top: 0; color: #007bff;">Prediction Accuracy</h3>
+                    <div id="accuracyMetric" style="font-size: 32px; font-weight: bold; color: #28a745;">--</div>
+                    <p style="margin: 5px 0 0 0; color: #666;">Correct winner predictions</p>
+                </div>
+                <div style="background: white; padding: 15px; border-radius: 4px; text-align: center;">
+                    <h3 style="margin-top: 0; color: #007bff;">Exact Score Predictions</h3>
+                    <div id="exactPredictions" style="font-size: 32px; font-weight: bold; color: #28a745;">--</div>
+                    <p style="margin: 5px 0 0 0; color: #666;">Perfect score predictions</p>
+                </div>
+                <div style="background: white; padding: 15px; border-radius: 4px; text-align: center;">
+                    <h3 style="margin-top: 0; color: #007bff;">Score Difference: 1-3 Points</h3>
+                    <div id="within3Points" style="font-size: 32px; font-weight: bold; color: #ffc107;">--</div>
+                    <p style="margin: 5px 0 0 0; color: #666;">Predictions off by 1-3 points</p>
+                </div>
+                <div style="background: white; padding: 15px; border-radius: 4px; text-align: center;">
+                    <h3 style="margin-top: 0; color: #007bff;">Score Difference: 4-5 Points</h3>
+                    <div id="within5Points" style="font-size: 32px; font-weight: bold; color: #ffc107;">--</div>
+                    <p style="margin: 5px 0 0 0; color: #666;">Predictions off by 4-5 points</p>
+                </div>
+            </div>
+            <div style="margin-top: 20px; background: white; padding: 15px; border-radius: 4px;">
+                <h3 style="margin-top: 0; color: #007bff;">Score Prediction Distribution</h3>
+                <div id="predictionDistribution" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 10px;">
+                    <!-- Distribution bars will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0;">
+            <div>
+                <h2>Biggest Upsets</h2>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #e9ecef;">
+                                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #dee2e6;">Winner</th>
+                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">Score</th>
+                                <th style="padding: 10px; text-align: right; border-bottom: 2px solid #dee2e6;">Loser</th>
+                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">Season</th>
+                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">Diff</th>
+                            </tr>
+                        </thead>
+                        <tbody id="biggestUpsetsTable">
+                            <tr>
+                                <td colspan="5" style="text-align: center; padding: 20px;">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div>
+                <h2>Biggest Prediction Misses</h2>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #e9ecef;">
+                                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #dee2e6;">Match</th>
+                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">Season</th>
+                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">Actual</th>
+                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">Predicted</th>
+                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">Miss</th>
+                            </tr>
+                        </thead>
+                        <tbody id="biggestMissesTable">
+                            <tr>
+                                <td colspan="5" style="text-align: center; padding: 20px;">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div>
+                <h2>Perfect Predictions</h2>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #e9ecef;">
+                                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #dee2e6;">Match</th>
+                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">Season</th>
+                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">Actual Score</th>
+                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">Predicted Score</th>
+                            </tr>
+                        </thead>
+                        <tbody id="perfectPredictionsTable">
+                            <tr>
+                                <td colspan="4" style="text-align: center; padding: 20px;">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for player history -->
+    <div id="historyModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+        <div style="background:#fff; padding:2em; border-radius:8px; max-width:500px; margin:auto; position:relative;">
+            <button id="closeHistoryModal" style="position:absolute; top:10px; right:10px;">&times;</button>
+            <h2 id="historyModalTitle">Player History</h2>
+            <div id="historyModalContent"></div>
+        </div>
+    </div>
+
+    <!-- SQL.js library for reading SQLite databases in the browser -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+    <!-- Chart.js library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
+
