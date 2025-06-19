@@ -32,23 +32,23 @@ async function initDatabase() {
         loadRankingsData();
         
     } catch (error) {
-        console.error('Error initializing database:', error);
+        console.error('Error loading database:', error);
         document.getElementById('activeRankingsTable').innerHTML = 
             '<tr><td colspan="9" style="text-align: center; color: red;">Error loading database</td></tr>';
         document.getElementById('allRankingsTable').innerHTML = 
-            '<tr><td colspan="9" style="text-align: center; color: red;">Error loading database</td></tr>';
+            '<tr><td colspan="10" style="text-align: center; color: red;">Error loading database</td></tr>';
     }
 }
 
 function loadRankingsData() {
     try {
         // Get total players count
-        const playersResult = db.exec("SELECT COUNT(*) as count FROM player");
+        const playersResult = db.exec("SELECT COUNT(*) as count FROM player_ratings WHERE (wins + losses) >= 5");
         const totalPlayers = playersResult[0]?.values[0]?.[0] || 0;
         document.getElementById('totalPlayers').textContent = totalPlayers;
         
         // Get total matches count
-        const matchesResult = db.exec("SELECT COUNT(*) as count FROM match");
+        const matchesResult = db.exec("SELECT COUNT(*) as count FROM match WHERE player_1_score IS NOT NULL AND player_2_score IS NOT NULL");
         const totalMatches = matchesResult[0]?.values[0]?.[0] || 0;
         document.getElementById('totalMatches').textContent = totalMatches;
         
@@ -72,12 +72,13 @@ function loadRankingsData() {
                 pr.points_for,
                 pr.points_against
             FROM player_ratings pr
-            WHERE (pr.wins + pr.losses) >= 5
-            AND pr.name IN (
-                SELECT DISTINCT name 
-                FROM player_rating_history 
-                WHERE season = ${currentSeason} AND matches > 0
+            WHERE EXISTS (
+                SELECT 1 
+                FROM match m 
+                WHERE (m.player_1_id = pr.player_id OR m.player_2_id = pr.player_id)
+                AND m.season = (SELECT MAX(season) FROM match)
             )
+            AND (pr.wins + pr.losses) >= 5
             ORDER BY pr.rating DESC
         `;
         
@@ -103,7 +104,12 @@ function loadRankingsData() {
                     ELSE 0 
                 END as win_percentage,
                 pr.points_for,
-                pr.points_against
+                pr.points_against,
+                COALESCE((
+                    SELECT MAX(prh.season) 
+                    FROM player_rating_history prh 
+                    WHERE prh.name = pr.name AND prh.matches > 0
+                ), 0) as last_season
             FROM player_ratings pr
             WHERE (pr.wins + pr.losses) >= 5
             ORDER BY pr.rating DESC
@@ -115,7 +121,7 @@ function loadRankingsData() {
             displayRankings(allPlayersResult[0].values, 'allRankingsTable');
         } else {
             document.getElementById('allRankingsTable').innerHTML = 
-                '<tr><td colspan="9" style="text-align: center;">No rankings data found. Run the Python script to calculate ratings.</td></tr>';
+                '<tr><td colspan="10" style="text-align: center;">No rankings data found. Run the Python script to calculate ratings.</td></tr>';
         }
         
         // Create the rating progression chart
@@ -137,7 +143,7 @@ function loadRankingsData() {
         document.getElementById('activeRankingsTable').innerHTML = 
             '<tr><td colspan="9" style="text-align: center; color: red;">Error loading rankings data</td></tr>';
         document.getElementById('allRankingsTable').innerHTML = 
-            '<tr><td colspan="9" style="text-align: center; color: red;">Error loading rankings data</td></tr>';
+            '<tr><td colspan="10" style="text-align: center; color: red;">Error loading rankings data</td></tr>';
     }
 }
 
@@ -286,21 +292,56 @@ function displayRankings(rankings, tableId) {
     const tbody = document.getElementById(tableId);
     tbody.innerHTML = '';
     
+    // Get current season for comparison
+    const currentSeason = parseInt(document.getElementById('currentSeason').textContent) || 7;
+    
     rankings.forEach((row, index) => {
-        const [name, rating, wins, losses, winPercentage, pointsFor, pointsAgainst] = row;
+        const [name, rating, wins, losses, winPercentage, pointsFor, pointsAgainst, lastSeason] = row;
         
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${index + 1}</td>
-            <td>${name}</td>
-            <td>${Math.round(rating)}</td>
-            <td>${wins}</td>
-            <td>${losses}</td>
-            <td>${Math.round(winPercentage)}%</td>
-            <td>${pointsFor}</td>
-            <td>${pointsAgainst}</td>
-            <td><button class="history-btn" data-player="${name}">History</button></td>
-        `;
+        let tr = document.createElement('tr');
+        
+        if (tableId === 'allRankingsTable') {
+            // All Players table - include Last Seen column
+            // Determine season styling based on recency
+            let seasonClass = '';
+            let seasonText = lastSeason > 0 ? `Season ${lastSeason}` : 'Never';
+            
+            if (lastSeason === currentSeason) {
+                seasonClass = 'season-current';
+            } else if (lastSeason === currentSeason - 1) {
+                seasonClass = 'season-recent';
+            } else if (lastSeason >= currentSeason - 2) {
+                seasonClass = 'season-older';
+            } else {
+                seasonClass = 'season-old';
+            }
+            
+            tr.innerHTML = `
+                <td>${index + 1}</td>
+                <td>${name}</td>
+                <td>${Math.round(rating)}</td>
+                <td>${wins}</td>
+                <td>${losses}</td>
+                <td>${Math.round(winPercentage)}%</td>
+                <td>${pointsFor}</td>
+                <td>${pointsAgainst}</td>
+                <td class="${seasonClass}">${seasonText}</td>
+                <td><button class="history-btn" data-player="${name}">History</button></td>
+            `;
+        } else {
+            // Active Players table - no Last Seen column
+            tr.innerHTML = `
+                <td>${index + 1}</td>
+                <td>${name}</td>
+                <td>${Math.round(rating)}</td>
+                <td>${wins}</td>
+                <td>${losses}</td>
+                <td>${Math.round(winPercentage)}%</td>
+                <td>${pointsFor}</td>
+                <td>${pointsAgainst}</td>
+                <td><button class="history-btn" data-player="${name}">History</button></td>
+            `;
+        }
         
         tbody.appendChild(tr);
     });
@@ -333,27 +374,27 @@ function showPlayerHistory(playerName) {
         
         if (historyResult.length > 0 && historyResult[0].values.length > 0) {
             document.getElementById('historyModalTitle').textContent = `History for ${playerName}`;
-            let html = `<table style="width:100%; text-align:center; border-collapse: collapse;">
-                <thead><tr style="background-color: #f0f0f0;">
-                    <th style="border: 1px solid #ddd; padding: 8px;">Season</th>
-                    <th style="border: 1px solid #ddd; padding: 8px;">Rating</th>
-                    <th style="border: 1px solid #ddd; padding: 8px;">Wins</th>
-                    <th style="border: 1px solid #ddd; padding: 8px;">Losses</th>
-                    <th style="border: 1px solid #ddd; padding: 8px;">Points For</th>
-                    <th style="border: 1px solid #ddd; padding: 8px;">Points Against</th>
-                    <th style="border: 1px solid #ddd; padding: 8px;">Matches</th>
+            let html = `<table>
+                <thead><tr>
+                    <th>Season</th>
+                    <th>Rating</th>
+                    <th>Wins</th>
+                    <th>Losses</th>
+                    <th>Points For</th>
+                    <th>Points Against</th>
+                    <th>Matches</th>
                 </tr></thead><tbody>`;
             
             historyResult[0].values.forEach(row => {
                 const [season, rating, wins, losses, pointsFor, pointsAgainst, matches] = row;
                 html += `<tr>
-                    <td style="border: 1px solid #ddd; padding: 8px;">${season}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">${Math.round(rating)}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">${wins}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">${losses}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">${pointsFor}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">${pointsAgainst}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">${matches}</td>
+                    <td>${season}</td>
+                    <td>${Math.round(rating)}</td>
+                    <td>${wins}</td>
+                    <td>${losses}</td>
+                    <td>${pointsFor}</td>
+                    <td>${pointsAgainst}</td>
+                    <td>${matches}</td>
                 </tr>`;
             });
             
@@ -364,28 +405,50 @@ function showPlayerHistory(playerName) {
             document.getElementById('historyModalContent').innerHTML = '<p>No season-by-season data found.</p>';
         }
         
-        document.getElementById('historyModal').style.display = 'flex';
+        const modal = document.getElementById('historyModal');
+        modal.classList.remove('hide');
+        modal.classList.add('show');
+        
+        // Ensure close button functionality is attached
+        setupModalClose(modal);
         
     } catch (error) {
         console.error('Error loading player history:', error);
         document.getElementById('historyModalTitle').textContent = `Error loading history for ${playerName}`;
         document.getElementById('historyModalContent').innerHTML = '<p>Error loading player history.</p>';
-        document.getElementById('historyModal').style.display = 'flex';
+        const modal = document.getElementById('historyModal');
+        modal.classList.remove('hide');
+        modal.classList.add('show');
     }
 }
 
-// Modal close logic
-if (typeof window !== 'undefined') {
-    window.addEventListener('DOMContentLoaded', () => {
-        document.getElementById('closeHistoryModal').onclick = function() {
-            document.getElementById('historyModal').style.display = 'none';
-        };
-        // Also close modal if clicking outside the modal content
-        document.getElementById('historyModal').onclick = function(e) {
-            if (e.target === this) {
-                this.style.display = 'none';
-            }
-        };
+function setupModalClose(modal) {
+    const closeBtn = document.getElementById('closeHistoryModal');
+    
+    // Remove any existing event listeners
+    const newCloseBtn = closeBtn.cloneNode(true);
+    closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+    
+    // Add click event listener to close button
+    newCloseBtn.addEventListener('click', () => {
+        modal.classList.add('hide');
+        modal.classList.remove('show');
+    });
+    
+    // Add click event listener to modal background
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.classList.add('hide');
+            modal.classList.remove('show');
+        }
+    });
+    
+    // Add escape key listener
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.classList.contains('show')) {
+            modal.classList.add('hide');
+            modal.classList.remove('show');
+        }
     });
 }
 

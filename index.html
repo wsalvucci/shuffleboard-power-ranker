@@ -72,12 +72,13 @@
                     <th>Win %</th>
                     <th>Points For</th>
                     <th>Points Against</th>
+                    <th>Last Seen</th>
                     <th>History</th>
                 </tr>
             </thead>
             <tbody id="allRankingsTable">
                 <tr>
-                    <td colspan="9" style="text-align: center;">Loading all rankings...</td>
+                    <td colspan="10" style="text-align: center;">Loading all rankings...</td>
                 </tr>
             </tbody>
         </table>
@@ -205,8 +206,8 @@
     </div>
 
     <!-- Modal for player history -->
-    <div id="historyModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
-        <div style="background:#fff; padding:2em; border-radius:8px; max-width:500px; margin:auto; position:relative;">
+    <div id="historyModal">
+        <div class="modal-content">
             <button id="closeHistoryModal">&times;</button>
             <h2 id="historyModalTitle">Player History</h2>
             <div id="historyModalContent"></div>
