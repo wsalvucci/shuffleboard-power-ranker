@@ -30,6 +30,51 @@ def processMatch(match):
 
     predictedScore1 = predictMatch(match['player1'], match['player2'])[0]
     predictedScore2 = predictMatch(match['player1'], match['player2'])[1]
+
+    #Calculate the new rating for each player
+    players[match['player1']]['rating'] += 32 * (actualScore1 - expectedScore1)
+    players[match['player2']]['rating'] += 32 * (actualScore2 - expectedScore2)
+
+    #Update wins and losses
+    if match['player1score'] > match['player2score']:
+        players[match['player1']]['wins'] += 1
+        players[match['player2']]['losses'] += 1
+    else:
+        players[match['player2']]['wins'] += 1
+        players[match['player1']]['losses'] += 1
+
+    #Update points for and against
+    players[match['player1']]['pointsFor'] += match['player1score']
+    players[match['player1']]['pointsAgainst'] += match['player2score']
+    players[match['player2']]['pointsFor'] += match['player2score']
+    players[match['player2']]['pointsAgainst'] += match['player1score']
+
+    #Update matches played
+    players[match['player1']]['matches'] += 1
+    players[match['player2']]['matches'] += 1
+
+    #Update accuracy tracking
+    if (match['player1score'] > match['player2score'] and predictedScore1 > predictedScore2) or (match['player2score'] > match['player1score'] and predictedScore2 > predictedScore1):
+        accuracy[0] += 1
+    else:
+        accuracy[1] += 1
+
+    #Update closeness tracking
+    scoreDifference = abs((match['player1score'] - match['player2score']) - (predictedScore1 - predictedScore2))
+    if scoreDifference == 0:
+        closeness[0] += 1
+    elif scoreDifference <= 3:
+        closeness[1] += 1
+    elif scoreDifference <= 5:
+        closeness[2] += 1
+    elif scoreDifference <= 10:
+        closeness[3] += 1
+    elif scoreDifference <= 15:
+        closeness[4] += 1
+    else:
+        closeness[5] += 1
+    closeness[6] += 1
+
     matchData = {
         'player1': match['player1'],
         'player2': match['player2'],
@@ -64,35 +109,23 @@ def processMatch(match):
     players[match['player1']]['opponents'].append(match['player2'])
     players[match['player2']]['opponents'].append(match['player1'])
 
-    #Calculate the new rating for each player
-    players[match['player1']]['rating'] += 32 * (actualScore1 - expectedScore1)
-    players[match['player2']]['rating'] += 32 * (actualScore2 - expectedScore2)
-    #Update the total matchces played for each player
-    players[match['player1']]['matches'] += 1
-    players[match['player2']]['matches'] += 1
-    #Update the wins and losses for each player
-    players[match['player1']]['wins'] += actualScore1
-    players[match['player1']]['losses'] += 1 - actualScore1
-    players[match['player2']]['wins'] += actualScore2
-    players[match['player2']]['losses'] += 1 - actualScore2
-    #Update each player's total points for and against
-    players[match['player1']]['pointsFor'] += match['player1score']
-    players[match['player1']]['pointsAgainst'] += match['player2score']
-    players[match['player2']]['pointsFor'] += match['player2score']
-    players[match['player2']]['pointsAgainst'] += match['player1score']
-
 
 #Function to predict the score of a match given the players' ratings
 #The winner must score 21 points
 def predictMatch(player1, player2):
-    #Calculate the expected rating for each player
-    expectedRating1 = 1 / (1 + 10 ** ((players[player2]['rating'] - players[player1]['rating']) / 400))
-    expectedRating2 = 1 / (1 + 10 ** ((players[player1]['rating'] - players[player2]['rating']) / 400))
-    #Calculate the expected score for each player with the higher expected rating scoring 21 points
-    expectedScore1 = 21 if expectedRating1 > expectedRating2 else 21 * expectedRating1 / expectedRating2
-    expectedScore2 = 21 if expectedRating2 > expectedRating1 else 21 * expectedRating2 / expectedRating1
-    #Return the expected score for each player rounded to the nearest integer
-    return [round(expectedScore1), round(expectedScore2)]
+    #Calculate the expected score for each player
+    expectedScore1 = 1 / (1 + 10 ** ((players[player2]['rating'] - players[player1]['rating']) / 400))
+    expectedScore2 = 1 / (1 + 10 ** ((players[player1]['rating'] - players[player2]['rating']) / 400))
+    
+    #Calculate the predicted score for each player
+    if expectedScore1 > expectedScore2:
+        predictedScore1 = 21
+        predictedScore2 = 21 * (expectedScore2 / expectedScore1)
+    else:
+        predictedScore2 = 21
+        predictedScore1 = 21 * (expectedScore1 / expectedScore2)
+    
+    return [round(predictedScore1, 1), round(predictedScore2, 1)]
 
 
 def calculateSeasonalRatings():
@@ -104,87 +137,148 @@ def calculateSeasonalRatings():
         # Clear existing historical data
         cursor.execute('DELETE FROM player_rating_history')
         
-        # Get all seasons
+        # Get all matches in chronological order (by id)
+        cursor.execute('''
+            SELECT m.id, m.player_1_id, m.player_2_id, m.player_1_score, m.player_2_score, m.season,
+                   p1.first_name || ' ' || p1.last_name as player1_name,
+                   p2.first_name || ' ' || p2.last_name as player2_name
+            FROM match m
+            JOIN player p1 ON m.player_1_id = p1.id
+            JOIN player p2 ON m.player_2_id = p2.id
+            WHERE m.player_1_score IS NOT NULL 
+            AND m.player_2_score IS NOT NULL
+            AND m.player_1_score != ''
+            AND m.player_2_score != ''
+            ORDER BY m.id
+        ''')
+        
+        all_matches = cursor.fetchall()
+        
+        print(f"Calculating ratings for {len(all_matches)} matches...")
+        
+        # Initialize players - ratings will accumulate across all matches
+        cumulative_players = {}
+        
+        # Track season-specific stats
+        season_stats = {}
+        current_season = None
+        
+        # Process each match in chronological order
+        for match_data in all_matches:
+            match_id, player1_id, player2_id, score1, score2, season, player1_name, player2_name = match_data
+            
+            # Skip matches with missing or invalid scores
+            try:
+                score1 = int(score1)
+                score2 = int(score2)
+            except (ValueError, TypeError):
+                print(f"Skipping match with invalid scores: {score1}, {score2} ({player1_name} vs {player2_name})")
+                continue
+            
+            # Initialize players if they don't exist (start at 1500 rating)
+            if player1_name not in cumulative_players:
+                cumulative_players[player1_name] = {'rating': 1500}
+            if player2_name not in cumulative_players:
+                cumulative_players[player2_name] = {'rating': 1500}
+            
+            # Initialize season stats if this is a new season
+            if season != current_season:
+                current_season = season
+                print(f"Processing season {season}...")
+            
+            # Initialize season stats if they don't exist
+            if player1_name not in season_stats:
+                season_stats[player1_name] = {'wins': 0, 'losses': 0, 'pointsFor': 0, 'pointsAgainst': 0, 'matches': 0}
+            if player2_name not in season_stats:
+                season_stats[player2_name] = {'wins': 0, 'losses': 0, 'pointsFor': 0, 'pointsAgainst': 0, 'matches': 0}
+            
+            # Calculate expected scores based on current cumulative ratings
+            expectedScore1 = 1 / (1 + 10 ** ((cumulative_players[player2_name]['rating'] - cumulative_players[player1_name]['rating']) / 400))
+            expectedScore2 = 1 / (1 + 10 ** ((cumulative_players[player1_name]['rating'] - cumulative_players[player2_name]['rating']) / 400))
+            
+            # Calculate actual scores
+            actualScore1 = 1 if score1 > score2 else 0
+            actualScore2 = 1 if score2 > score1 else 0
+            
+            # Update cumulative ratings
+            cumulative_players[player1_name]['rating'] += 32 * (actualScore1 - expectedScore1)
+            cumulative_players[player2_name]['rating'] += 32 * (actualScore2 - expectedScore2)
+            
+            # Update season-specific stats
+            season_stats[player1_name]['wins'] += actualScore1
+            season_stats[player1_name]['losses'] += 1 - actualScore1
+            season_stats[player2_name]['wins'] += actualScore2
+            season_stats[player2_name]['losses'] += 1 - actualScore2
+            
+            season_stats[player1_name]['pointsFor'] += score1
+            season_stats[player1_name]['pointsAgainst'] += score2
+            season_stats[player2_name]['pointsFor'] += score2
+            season_stats[player2_name]['pointsAgainst'] += score1
+            
+            season_stats[player1_name]['matches'] += 1
+            season_stats[player2_name]['matches'] += 1
+        
+        # Get all unique seasons to save historical data
         cursor.execute('SELECT DISTINCT season FROM match ORDER BY season')
         seasons = [row[0] for row in cursor.fetchall()]
         
-        print(f"Calculating ratings for {len(seasons)} seasons...")
-        
-        # Initialize players - ratings will accumulate across seasons, but stats will be season-specific
-        cumulative_players = {}
+        # For each season, save the cumulative rating at that point
+        # We need to recalculate to get the rating at the end of each season
+        cumulative_players_seasonal = {}
         
         for season in seasons:
-            print(f"Processing season {season}...")
-            
-            # Get matches for this season
+            # Get matches up to and including this season
             cursor.execute('''
-                SELECT m.player_1_id, m.player_2_id, m.player_1_score, m.player_2_score,
+                SELECT m.id, m.player_1_id, m.player_2_id, m.player_1_score, m.player_2_score,
                        p1.first_name || ' ' || p1.last_name as player1_name,
                        p2.first_name || ' ' || p2.last_name as player2_name
                 FROM match m
                 JOIN player p1 ON m.player_1_id = p1.id
                 JOIN player p2 ON m.player_2_id = p2.id
-                WHERE m.season = ?
+                WHERE m.player_1_score IS NOT NULL 
+                AND m.player_2_score IS NOT NULL
+                AND m.player_1_score != ''
+                AND m.player_2_score != ''
+                AND m.season <= ?
                 ORDER BY m.id
             ''', (season,))
             
             season_matches = cursor.fetchall()
             
-            # Initialize season-specific stats for this season
-            season_stats = {}
+            # Reset cumulative players for this season calculation
+            cumulative_players_seasonal = {}
             
-            # Process each match in the season
+            # Process each match up to this season
             for match_data in season_matches:
-                player1_id, player2_id, score1, score2, player1_name, player2_name = match_data
+                match_id, player1_id, player2_id, score1, score2, player1_name, player2_name = match_data
                 
                 # Skip matches with missing or invalid scores
                 try:
                     score1 = int(score1)
                     score2 = int(score2)
                 except (ValueError, TypeError):
-                    print(f"Skipping match with invalid scores: {score1}, {score2} ({player1_name} vs {player2_name})")
                     continue
                 
                 # Initialize players if they don't exist (start at 1500 rating)
-                if player1_name not in cumulative_players:
-                    cumulative_players[player1_name] = {'rating': 1500}
-                if player2_name not in cumulative_players:
-                    cumulative_players[player2_name] = {'rating': 1500}
-                
-                # Initialize season stats if they don't exist
-                if player1_name not in season_stats:
-                    season_stats[player1_name] = {'wins': 0, 'losses': 0, 'pointsFor': 0, 'pointsAgainst': 0, 'matches': 0}
-                if player2_name not in season_stats:
-                    season_stats[player2_name] = {'wins': 0, 'losses': 0, 'pointsFor': 0, 'pointsAgainst': 0, 'matches': 0}
+                if player1_name not in cumulative_players_seasonal:
+                    cumulative_players_seasonal[player1_name] = {'rating': 1500}
+                if player2_name not in cumulative_players_seasonal:
+                    cumulative_players_seasonal[player2_name] = {'rating': 1500}
                 
                 # Calculate expected scores based on current cumulative ratings
-                expectedScore1 = 1 / (1 + 10 ** ((cumulative_players[player2_name]['rating'] - cumulative_players[player1_name]['rating']) / 400))
-                expectedScore2 = 1 / (1 + 10 ** ((cumulative_players[player1_name]['rating'] - cumulative_players[player2_name]['rating']) / 400))
+                expectedScore1 = 1 / (1 + 10 ** ((cumulative_players_seasonal[player2_name]['rating'] - cumulative_players_seasonal[player1_name]['rating']) / 400))
+                expectedScore2 = 1 / (1 + 10 ** ((cumulative_players_seasonal[player1_name]['rating'] - cumulative_players_seasonal[player2_name]['rating']) / 400))
                 
                 # Calculate actual scores
                 actualScore1 = 1 if score1 > score2 else 0
                 actualScore2 = 1 if score2 > score1 else 0
                 
                 # Update cumulative ratings
-                cumulative_players[player1_name]['rating'] += 32 * (actualScore1 - expectedScore1)
-                cumulative_players[player2_name]['rating'] += 32 * (actualScore2 - expectedScore2)
-                
-                # Update season-specific stats
-                season_stats[player1_name]['wins'] += actualScore1
-                season_stats[player1_name]['losses'] += 1 - actualScore1
-                season_stats[player2_name]['wins'] += actualScore2
-                season_stats[player2_name]['losses'] += 1 - actualScore2
-                
-                season_stats[player1_name]['pointsFor'] += score1
-                season_stats[player1_name]['pointsAgainst'] += score2
-                season_stats[player2_name]['pointsFor'] += score2
-                season_stats[player2_name]['pointsAgainst'] += score1
-                
-                season_stats[player1_name]['matches'] += 1
-                season_stats[player2_name]['matches'] += 1
+                cumulative_players_seasonal[player1_name]['rating'] += 32 * (actualScore1 - expectedScore1)
+                cumulative_players_seasonal[player2_name]['rating'] += 32 * (actualScore2 - expectedScore2)
             
-            # Save end-of-season data to history (cumulative rating + season-specific stats)
-            for player_name, player_data in cumulative_players.items():
+            # Save end-of-season data to history
+            for player_name, player_data in cumulative_players_seasonal.items():
                 # Find or create player in player table
                 name_parts = player_name.split(' ', 1)
                 first_name = name_parts[0] if len(name_parts) > 0 else player_name
@@ -199,8 +293,41 @@ def calculateSeasonalRatings():
                     cursor.execute('INSERT INTO player (first_name, last_name) VALUES (?, ?)', (first_name, last_name))
                     player_id = cursor.lastrowid
                 
-                # Get season-specific stats (default to 0 if player didn't play this season)
-                season_data = season_stats.get(player_name, {'wins': 0, 'losses': 0, 'pointsFor': 0, 'pointsAgainst': 0, 'matches': 0})
+                # Get season-specific stats for this season only
+                cursor.execute('''
+                    SELECT m.player_1_id, m.player_2_id, m.player_1_score, m.player_2_score,
+                           p1.first_name || ' ' || p1.last_name as player1_name,
+                           p2.first_name || ' ' || p2.last_name as player2_name
+                    FROM match m
+                    JOIN player p1 ON m.player_1_id = p1.id
+                    JOIN player p2 ON m.player_2_id = p2.id
+                    WHERE m.season = ? AND m.player_1_score IS NOT NULL AND m.player_2_score IS NOT NULL
+                ''', (season,))
+                
+                season_only_matches = cursor.fetchall()
+                season_data = {'wins': 0, 'losses': 0, 'pointsFor': 0, 'pointsAgainst': 0, 'matches': 0}
+                
+                for season_match in season_only_matches:
+                    s_player1_id, s_player2_id, s_score1, s_score2, s_player1_name, s_player2_name = season_match
+                    
+                    try:
+                        s_score1 = int(s_score1)
+                        s_score2 = int(s_score2)
+                    except (ValueError, TypeError):
+                        continue
+                    
+                    if s_player1_name == player_name:
+                        season_data['wins'] += 1 if s_score1 > s_score2 else 0
+                        season_data['losses'] += 1 if s_score1 < s_score2 else 0
+                        season_data['pointsFor'] += s_score1
+                        season_data['pointsAgainst'] += s_score2
+                        season_data['matches'] += 1
+                    elif s_player2_name == player_name:
+                        season_data['wins'] += 1 if s_score2 > s_score1 else 0
+                        season_data['losses'] += 1 if s_score2 < s_score1 else 0
+                        season_data['pointsFor'] += s_score2
+                        season_data['pointsAgainst'] += s_score1
+                        season_data['matches'] += 1
                 
                 # Insert historical rating (cumulative rating + season-specific stats)
                 cursor.execute('''
@@ -294,6 +421,141 @@ def saveRatingsToDatabase():
         print(f"Error saving ratings to database: {e}")
 
 
+def createMatchRatingChangesTable():
+    """Create a new table to store per-match rating changes"""
+    try:
+        conn = sqlite3.connect('storage.db')
+        cursor = conn.cursor()
+        
+        # Create the match_rating_changes table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS match_rating_changes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                match_id INTEGER NOT NULL,
+                player_id INTEGER NOT NULL,
+                player_name TEXT NOT NULL,
+                rating_before REAL NOT NULL,
+                rating_after REAL NOT NULL,
+                rating_change REAL NOT NULL,
+                season INTEGER NOT NULL,
+                FOREIGN KEY (match_id) REFERENCES match (id),
+                FOREIGN KEY (player_id) REFERENCES player (id)
+            )
+        ''')
+        
+        # Clear existing data
+        cursor.execute('DELETE FROM match_rating_changes')
+        
+        conn.commit()
+        conn.close()
+        print("Match rating changes table created successfully!")
+        
+    except Exception as e:
+        print(f"Error creating match rating changes table: {e}")
+
+
+def calculateMatchRatingChanges():
+    """Calculate and store the exact rating before and after each match"""
+    try:
+        conn = sqlite3.connect('storage.db')
+        cursor = conn.cursor()
+        
+        # Get all matches in chronological order (by id)
+        cursor.execute('''
+            SELECT m.id, m.player_1_id, m.player_2_id, m.player_1_score, m.player_2_score, m.season,
+                   p1.first_name || ' ' || p1.last_name as player1_name,
+                   p2.first_name || ' ' || p2.last_name as player2_name
+            FROM match m
+            JOIN player p1 ON m.player_1_id = p1.id
+            JOIN player p2 ON m.player_2_id = p2.id
+            WHERE m.player_1_score IS NOT NULL 
+            AND m.player_1_score != ''
+            AND m.player_2_score IS NOT NULL
+            AND m.player_2_score != ''
+            ORDER BY m.id
+        ''')
+        
+        all_matches = cursor.fetchall()
+        
+        print(f"Calculating per-match rating changes for {len(all_matches)} matches...")
+        
+        # Initialize players - ratings will accumulate across all matches
+        cumulative_players = {}
+        
+        # Process each match in chronological order
+        for match_data in all_matches:
+            match_id, player1_id, player2_id, score1, score2, season, player1_name, player2_name = match_data
+            
+            # Skip matches with missing or invalid scores
+            try:
+                score1 = int(score1)
+                score2 = int(score2)
+            except (ValueError, TypeError):
+                print(f"Skipping match with invalid scores: {score1}, {score2} ({player1_name} vs {player2_name})")
+                continue
+            
+            # Initialize players if they don't exist (start at 1500 rating)
+            if player1_name not in cumulative_players:
+                cumulative_players[player1_name] = {'rating': 1500}
+            if player2_name not in cumulative_players:
+                cumulative_players[player2_name] = {'rating': 1500}
+            
+            # Store ratings before the match
+            player1_rating_before = cumulative_players[player1_name]['rating']
+            player2_rating_before = cumulative_players[player2_name]['rating']
+            
+            # Calculate expected scores based on current cumulative ratings
+            expectedScore1 = 1 / (1 + 10 ** ((cumulative_players[player2_name]['rating'] - cumulative_players[player1_name]['rating']) / 400))
+            expectedScore2 = 1 / (1 + 10 ** ((cumulative_players[player1_name]['rating'] - cumulative_players[player2_name]['rating']) / 400))
+            
+            # Calculate actual scores
+            actualScore1 = 1 if score1 > score2 else 0
+            actualScore2 = 1 if score2 > score1 else 0
+            
+            # Update cumulative ratings
+            cumulative_players[player1_name]['rating'] += 32 * (actualScore1 - expectedScore1)
+            cumulative_players[player2_name]['rating'] += 32 * (actualScore2 - expectedScore2)
+            
+            # Store ratings after the match
+            player1_rating_after = cumulative_players[player1_name]['rating']
+            player2_rating_after = cumulative_players[player2_name]['rating']
+            
+            # Insert rating changes for player 1
+            cursor.execute('''
+                INSERT INTO match_rating_changes (match_id, player_id, player_name, rating_before, rating_after, rating_change, season)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                match_id,
+                player1_id,
+                player1_name,
+                player1_rating_before,
+                player1_rating_after,
+                player1_rating_after - player1_rating_before,
+                season
+            ))
+            
+            # Insert rating changes for player 2
+            cursor.execute('''
+                INSERT INTO match_rating_changes (match_id, player_id, player_name, rating_before, rating_after, rating_change, season)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                match_id,
+                player2_id,
+                player2_name,
+                player2_rating_before,
+                player2_rating_after,
+                player2_rating_after - player2_rating_before,
+                season
+            ))
+        
+        conn.commit()
+        conn.close()
+        print("Per-match rating changes calculated and stored successfully!")
+        
+    except Exception as e:
+        print(f"Error calculating match rating changes: {e}")
+
+
 # Read match data from database instead of JSON
 try:
     conn = sqlite3.connect('storage.db')
@@ -358,6 +620,10 @@ try:
     
     # Calculate and save seasonal ratings
     calculateSeasonalRatings()
+    
+    # Create and calculate match rating changes
+    createMatchRatingChangesTable()
+    calculateMatchRatingChanges()
     
     # Save current ratings to database
     saveRatingsToDatabase()

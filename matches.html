@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Match History - Shuffleboard Power Rankings</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Additional styles specific to matches page */
+        .season-header {
+            background: linear-gradient(145deg, var(--bg-tertiary), var(--bg-secondary));
+            border: 1px solid var(--accent-blue);
+            border-radius: 8px;
+            padding: 15px 20px;
+            margin: 10px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .season-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .season-header:hover::before {
+            left: 100%;
+        }
+
+        .season-header:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-glow-strong);
+            border-color: var(--accent-cyan);
+        }
+
+        .season-header h3 {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.4rem;
+            color: var(--accent-cyan);
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .season-header .expand-icon {
+            font-size: 1.2rem;
+            transition: transform 0.3s ease;
+        }
+
+        .season-header.expanded .expand-icon {
+            transform: rotate(90deg);
+        }
+
+        .season-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease;
+            background: var(--bg-secondary);
+            border: 1px solid var(--accent-blue);
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            margin-top: -10px;
+            margin-bottom: 20px;
+        }
+
+        .season-content.expanded {
+            max-height: 600px;
+            overflow-y: scroll;
+        }
+
+        .match-card {
+            background: var(--bg-primary);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 4px;
+            margin: 5px;
+            padding: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .match-card:hover {
+            border-color: var(--accent-blue);
+            box-shadow: var(--shadow-glow);
+            transform: translateY(-1px);
+        }
+
+        .match-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+        }
+
+        .match-players {
+            font-family: 'Orbitron', monospace;
+            font-size: 0.9rem;
+            color: var(--accent-silver);
+            font-weight: 600;
+        }
+
+        .match-date {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        .match-details {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .player-info {
+            text-align: center;
+        }
+
+        .player-name {
+            font-family: 'Orbitron', monospace;
+            font-size: 0.8rem;
+            color: var(--accent-cyan);
+            margin-bottom: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .player-rating {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--accent-blue);
+            margin-bottom: 3px;
+        }
+
+        .player-score {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            text-shadow: 0 0 8px var(--text-primary);
+        }
+
+        .player-score.winner {
+            color: var(--success-green);
+            text-shadow: 0 0 12px var(--success-green);
+        }
+
+        .vs-section {
+            text-align: center;
+            font-family: 'Orbitron', monospace;
+            font-size: 0.9rem;
+            color: var(--accent-cyan);
+            font-weight: 600;
+        }
+
+        .predicted-score {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-left: 5px;
+            opacity: 0.8;
+        }
+
+        .rating-change {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            margin-top: 2px;
+        }
+
+        .rating-change.positive {
+            color: var(--success-green);
+        }
+
+        .rating-change.negative {
+            color: var(--error-red);
+        }
+
+        .rating-change.neutral {
+            color: var(--text-muted);
+        }
+
+        .match-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px solid rgba(0, 212, 255, 0.1);
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-family: 'Orbitron', monospace;
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .navigation-bar {
+            background: var(--bg-secondary);
+            border: 1px solid var(--accent-blue);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow-glow);
+        }
+
+        .nav-link {
+            background: linear-gradient(145deg, var(--accent-blue), #0099cc);
+            border: none;
+            color: var(--bg-primary);
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Orbitron', monospace;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .nav-link:hover {
+            background: linear-gradient(145deg, var(--accent-cyan), var(--accent-blue));
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-glow-strong);
+        }
+
+        .page-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.2rem;
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .loading-message {
+            text-align: center;
+            padding: 40px;
+            color: var(--accent-blue);
+            font-family: 'Orbitron', monospace;
+            font-size: 1.1rem;
+        }
+
+        .no-matches {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        @media (max-width: 768px) {
+            .match-details {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .vs-section {
+                order: -1;
+                margin-bottom: 10px;
+            }
+
+            .match-predictions {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .navigation-bar {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="navigation-bar">
+            <div class="page-title">📊 MATCH HISTORY DATABASE</div>
+            <a href="index.html" class="nav-link">← BACK TO RANKINGS</a>
+        </div>
+
+        <h1>🏓 Match History</h1>
+        
+        <div id="matchesContainer">
+            <div class="loading-message">
+                <div style="margin-bottom: 10px;">🔄 LOADING MATCH DATA...</div>
+                <div style="font-size: 0.9rem; color: var(--text-muted);">Initializing database connection</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SQL.js library for reading SQLite databases in the browser -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+    <script>
+        let db = null;
+
+        async function initDatabase() {
+            try {
+                // Initialize sql.js
+                const SQL = await initSqlJs({
+                    locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
+                });
+                
+                console.log('SQL.js initialized successfully');
+                
+                // Load the database file
+                const response = await fetch('storage.db');
+                const arrayBuffer = await response.arrayBuffer();
+                
+                // Create database instance
+                db = new SQL.Database(new Uint8Array(arrayBuffer));
+                
+                console.log('Database loaded successfully');
+                
+                // Load and display the matches data
+                loadMatchesData();
+                
+            } catch (error) {
+                console.error('Error initializing database:', error);
+                document.getElementById('matchesContainer').innerHTML = 
+                    '<div class="no-matches">❌ Error loading database</div>';
+            }
+        }
+
+        function loadMatchesData() {
+            try {
+                // Get all matches with player information and exact per-match rating changes
+                const matchesQuery = `
+                    SELECT 
+                        m.id,
+                        m.season,
+                        m.player_1_id,
+                        m.player_2_id,
+                        CAST(m.player_1_score AS INTEGER) as player_1_score,
+                        CAST(m.player_2_score AS INTEGER) as player_2_score,
+                        p1.first_name || ' ' || p1.last_name as player1_name,
+                        p2.first_name || ' ' || p2.last_name as player2_name,
+                        mrc1.rating_before as player1_rating_before,
+                        mrc1.rating_after as player1_rating_after,
+                        mrc1.rating_change as player1_rating_change,
+                        mrc2.rating_before as player2_rating_before,
+                        mrc2.rating_after as player2_rating_after,
+                        mrc2.rating_change as player2_rating_change
+                    FROM match m
+                    JOIN player p1 ON m.player_1_id = p1.id
+                    JOIN player p2 ON m.player_2_id = p2.id
+                    JOIN match_rating_changes mrc1 ON m.id = mrc1.match_id AND m.player_1_id = mrc1.player_id
+                    JOIN match_rating_changes mrc2 ON m.id = mrc2.match_id AND m.player_2_id = mrc2.player_id
+                    WHERE m.player_1_score IS NOT NULL 
+                    AND m.player_1_score != ''
+                    AND m.player_2_score IS NOT NULL
+                    AND m.player_2_score != ''
+                    AND CAST(m.player_1_score AS INTEGER) > 0
+                    AND CAST(m.player_2_score AS INTEGER) > 0
+                    ORDER BY m.season DESC, m.id DESC
+                `;
+                
+                const matchesResult = db.exec(matchesQuery);
+                
+                if (matchesResult.length === 0 || matchesResult[0].values.length === 0) {
+                    document.getElementById('matchesContainer').innerHTML = 
+                        '<div class="no-matches">No matches found in database. Run the Python script to calculate match rating changes.</div>';
+                    return;
+                }
+                
+                // Group matches by season
+                const matchesBySeason = {};
+                matchesResult[0].values.forEach(match => {
+                    const [id, season, p1_id, p2_id, score1, score2, name1, name2, 
+                          rating1_before, rating1_after, rating1_change,
+                          rating2_before, rating2_after, rating2_change] = match;
+                    
+                    if (!matchesBySeason[season]) {
+                        matchesBySeason[season] = [];
+                    }
+                    
+                    matchesBySeason[season].push({
+                        id, season, p1_id, p2_id, score1, score2, name1, name2,
+                        rating1_before: rating1_before || 1500,
+                        rating1_after: rating1_after || 1500,
+                        rating1_change: rating1_change || 0,
+                        rating2_before: rating2_before || 1500,
+                        rating2_after: rating2_after || 1500,
+                        rating2_change: rating2_change || 0
+                    });
+                });
+                
+                // Display matches grouped by season
+                displayMatchesBySeason(matchesBySeason);
+                
+            } catch (error) {
+                console.error('Error loading matches data:', error);
+                document.getElementById('matchesContainer').innerHTML = 
+                    '<div class="no-matches">Error loading matches data. Make sure to run the Python script to calculate match rating changes.</div>';
+            }
+        }
+
+        function displayMatchesBySeason(matchesBySeason) {
+            const container = document.getElementById('matchesContainer');
+            const seasons = Object.keys(matchesBySeason).sort((a, b) => b - a); // Sort descending
+            
+            let html = '';
+            
+            seasons.forEach(season => {
+                const matches = matchesBySeason[season];
+                
+                html += `
+                    <div class="season-header" onclick="toggleSeason('season-${season}')">
+                        <h3>
+                            <span>SEASON ${season} (${matches.length} MATCHES)</span>
+                            <span class="expand-icon">▶</span>
+                        </h3>
+                    </div>
+                    <div class="season-content" id="season-${season}">
+                `;
+                
+                matches.forEach(match => {
+                    const isPlayer1Winner = match.score1 > match.score2;
+                    const winner = isPlayer1Winner ? match.name1 : match.name2;
+                    const loser = isPlayer1Winner ? match.name2 : match.name1;
+                    
+                    // Calculate predicted scores using the exact ratings before the match
+                    const expectedRating1 = 1 / (1 + Math.pow(10, (match.rating2_before - match.rating1_before) / 400));
+                    const expectedRating2 = 1 / (1 + Math.pow(10, (match.rating1_before - match.rating2_before) / 400));
+                    
+                    let predictedScore1, predictedScore2;
+                    if (expectedRating1 > expectedRating2) {
+                        predictedScore1 = 21;
+                        predictedScore2 = Math.round(21 * (expectedRating2 / expectedRating1) * 10) / 10;
+                    } else {
+                        predictedScore2 = 21;
+                        predictedScore1 = Math.round(21 * (expectedRating1 / expectedRating2) * 10) / 10;
+                    }
+                    
+                    // Use the exact rating changes from the database
+                    const rating1Change = match.rating1_change;
+                    const rating2Change = match.rating2_change;
+                    
+                    html += `
+                        <div class="match-card">
+                            <div class="match-header">
+                                <div class="match-players">${match.name1} vs ${match.name2}</div>
+                                <div class="match-date">Match #${match.id}</div>
+                            </div>
+                            
+                            <div class="match-details">
+                                <div class="player-info">
+                                    <div class="player-name">${match.name1}</div>
+                                    <div class="player-rating">
+                                        Rating: ${Math.round(match.rating1_before)}
+                                        <span class="rating-change ${rating1Change > 0 ? 'positive' : rating1Change < 0 ? 'negative' : 'neutral'}">
+                                            (${rating1Change > 0 ? '+' : ''}${Math.round(rating1Change)})
+                                        </span>
+                                    </div>
+                                    <div class="player-score ${isPlayer1Winner ? 'winner' : ''}">
+                                        ${match.score1}
+                                        <span class="predicted-score">(${predictedScore1})</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="vs-section">VS</div>
+                                
+                                <div class="player-info">
+                                    <div class="player-name">${match.name2}</div>
+                                    <div class="player-rating">
+                                        Rating: ${Math.round(match.rating2_before)}
+                                        <span class="rating-change ${rating2Change > 0 ? 'positive' : rating2Change < 0 ? 'negative' : 'neutral'}">
+                                            (${rating2Change > 0 ? '+' : ''}${Math.round(rating2Change)})
+                                        </span>
+                                    </div>
+                                    <div class="player-score ${!isPlayer1Winner ? 'winner' : ''}">
+                                        ${match.score2}
+                                        <span class="predicted-score">(${predictedScore2})</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="match-stats">
+                                <div class="stat-item">
+                                    <div class="stat-label">Winner</div>
+                                    <div class="stat-value">${winner}</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">Margin</div>
+                                    <div class="stat-value">${Math.abs(match.score1 - match.score2)}</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">Total Points</div>
+                                    <div class="stat-value">${match.score1 + match.score2}</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">Rating Diff</div>
+                                    <div class="stat-value">${Math.abs(Math.round(match.rating1_before - match.rating2_before))}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+            });
+            
+            container.innerHTML = html;
+        }
+
+        function toggleSeason(seasonId) {
+            const seasonHeader = document.querySelector(`#${seasonId}`).previousElementSibling;
+            const seasonContent = document.getElementById(seasonId);
+            
+            seasonHeader.classList.toggle('expanded');
+            seasonContent.classList.toggle('expanded');
+        }
+
+        // Initialize when page loads
+        if (typeof window !== 'undefined') {
+            window.addEventListener('DOMContentLoaded', initDatabase);
+        }
+    </script>
+</body>
+</html> 
