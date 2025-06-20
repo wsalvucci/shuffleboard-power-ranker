@@ -43,7 +43,7 @@ async function initDatabase() {
 function loadRankingsData() {
     try {
         // Get total players count
-        const playersResult = db.exec("SELECT COUNT(*) as count FROM player_ratings WHERE (wins + losses) >= 5");
+        const playersResult = db.exec("SELECT COUNT(*) as count FROM player_ratings");
         const totalPlayers = playersResult[0]?.values[0]?.[0] || 0;
         document.getElementById('totalPlayers').textContent = totalPlayers;
         
@@ -70,7 +70,8 @@ function loadRankingsData() {
                     ELSE 0 
                 END as win_percentage,
                 pr.points_for,
-                pr.points_against
+                pr.points_against,
+                pr.player_id
             FROM player_ratings pr
             WHERE EXISTS (
                 SELECT 1 
@@ -88,7 +89,7 @@ function loadRankingsData() {
             displayRankings(activePlayersResult[0].values, 'activeRankingsTable');
         } else {
             document.getElementById('activeRankingsTable').innerHTML = 
-                '<tr><td colspan="9" style="text-align: center;">No active players found.</td></tr>';
+                '<tr><td colspan="8" style="text-align: center;">No active players found.</td></tr>';
         }
         
         // Get all players rankings
@@ -109,9 +110,9 @@ function loadRankingsData() {
                     SELECT MAX(prh.season) 
                     FROM player_rating_history prh 
                     WHERE prh.name = pr.name AND prh.matches > 0
-                ), 0) as last_season
+                ), 0) as last_season,
+                pr.player_id
             FROM player_ratings pr
-            WHERE (pr.wins + pr.losses) >= 5
             ORDER BY pr.rating DESC
         `;
         
@@ -296,9 +297,25 @@ function displayRankings(rankings, tableId) {
     const currentSeason = parseInt(document.getElementById('currentSeason').textContent) || 7;
     
     rankings.forEach((row, index) => {
-        const [name, rating, wins, losses, winPercentage, pointsFor, pointsAgainst, lastSeason] = row;
+        // Handle different column orders for active vs all players
+        let name, rating, wins, losses, winPercentage, pointsFor, pointsAgainst, lastSeason, player_id;
+        
+        if (tableId === 'activeRankingsTable') {
+            // Active Players: [name, rating, wins, losses, winPercentage, pointsFor, pointsAgainst, player_id]
+            [name, rating, wins, losses, winPercentage, pointsFor, pointsAgainst, player_id] = row;
+            lastSeason = currentSeason; // Active players are in current season
+        } else {
+            // All Players: [name, rating, wins, losses, winPercentage, pointsFor, pointsAgainst, lastSeason, player_id]
+            [name, rating, wins, losses, winPercentage, pointsFor, pointsAgainst, lastSeason, player_id] = row;
+        }
         
         let tr = document.createElement('tr');
+        
+        // Add click listener to the entire row
+        tr.style.cursor = 'pointer';
+        tr.addEventListener('click', () => {
+            window.location.href = `player.html?id=${player_id}`;
+        });
         
         if (tableId === 'allRankingsTable') {
             // All Players table - include Last Seen column
@@ -326,7 +343,6 @@ function displayRankings(rankings, tableId) {
                 <td>${pointsFor}</td>
                 <td>${pointsAgainst}</td>
                 <td class="${seasonClass}">${seasonText}</td>
-                <td><button class="history-btn" data-player="${name}">History</button></td>
             `;
         } else {
             // Active Players table - no Last Seen column
@@ -339,116 +355,10 @@ function displayRankings(rankings, tableId) {
                 <td>${Math.round(winPercentage)}%</td>
                 <td>${pointsFor}</td>
                 <td>${pointsAgainst}</td>
-                <td><button class="history-btn" data-player="${name}">History</button></td>
             `;
         }
         
         tbody.appendChild(tr);
-    });
-
-    // Add event listeners for history buttons in this table
-    tbody.querySelectorAll('.history-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const playerName = this.getAttribute('data-player');
-            showPlayerHistory(playerName);
-        });
-    });
-}
-
-function showPlayerHistory(playerName) {
-    try {
-        console.log('Loading history for player:', playerName);
-        
-        // Query the player_rating_history table for this player using db.exec()
-        const historyQuery = `
-            SELECT season, rating, wins, losses, points_for, points_against, matches 
-            FROM player_rating_history 
-            WHERE name = '${playerName.replace(/'/g, "''")}' 
-            AND matches > 0
-            ORDER BY season ASC
-        `;
-        
-        console.log('Executing query:', historyQuery);
-        const historyResult = db.exec(historyQuery);
-        console.log('Query result:', historyResult);
-        
-        if (historyResult.length > 0 && historyResult[0].values.length > 0) {
-            document.getElementById('historyModalTitle').textContent = `History for ${playerName}`;
-            let html = `<table>
-                <thead><tr>
-                    <th>Season</th>
-                    <th>Rating</th>
-                    <th>Wins</th>
-                    <th>Losses</th>
-                    <th>Points For</th>
-                    <th>Points Against</th>
-                    <th>Matches</th>
-                </tr></thead><tbody>`;
-            
-            historyResult[0].values.forEach(row => {
-                const [season, rating, wins, losses, pointsFor, pointsAgainst, matches] = row;
-                html += `<tr>
-                    <td>${season}</td>
-                    <td>${Math.round(rating)}</td>
-                    <td>${wins}</td>
-                    <td>${losses}</td>
-                    <td>${pointsFor}</td>
-                    <td>${pointsAgainst}</td>
-                    <td>${matches}</td>
-                </tr>`;
-            });
-            
-            html += '</tbody></table>';
-            document.getElementById('historyModalContent').innerHTML = html;
-        } else {
-            document.getElementById('historyModalTitle').textContent = `No history for ${playerName}`;
-            document.getElementById('historyModalContent').innerHTML = '<p>No season-by-season data found.</p>';
-        }
-        
-        const modal = document.getElementById('historyModal');
-        modal.classList.remove('hide');
-        modal.classList.add('show');
-        
-        // Ensure close button functionality is attached
-        setupModalClose(modal);
-        
-    } catch (error) {
-        console.error('Error loading player history:', error);
-        document.getElementById('historyModalTitle').textContent = `Error loading history for ${playerName}`;
-        document.getElementById('historyModalContent').innerHTML = '<p>Error loading player history.</p>';
-        const modal = document.getElementById('historyModal');
-        modal.classList.remove('hide');
-        modal.classList.add('show');
-    }
-}
-
-function setupModalClose(modal) {
-    const closeBtn = document.getElementById('closeHistoryModal');
-    
-    // Remove any existing event listeners
-    const newCloseBtn = closeBtn.cloneNode(true);
-    closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
-    
-    // Add click event listener to close button
-    newCloseBtn.addEventListener('click', () => {
-        modal.classList.add('hide');
-        modal.classList.remove('show');
-    });
-    
-    // Add click event listener to modal background
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            modal.classList.add('hide');
-            modal.classList.remove('show');
-        }
-    });
-    
-    // Add escape key listener
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && modal.classList.contains('show')) {
-            modal.classList.add('hide');
-            modal.classList.remove('show');
-        }
     });
 }
 
