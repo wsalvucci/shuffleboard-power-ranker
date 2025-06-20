@@ -20,7 +20,7 @@ async function initDatabase() {
         console.log('SQL.js initialized successfully');
         
         // Load the database file
-        const response = await fetch('storage.db');
+        const response = await fetch('storage.db?v=' + Date.now());
         const arrayBuffer = await response.arrayBuffer();
         
         // Create database instance
