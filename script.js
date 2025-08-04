@@ -78,6 +78,10 @@ function loadRankingsData() {
                 FROM match m 
                 WHERE (m.player_1_id = pr.player_id OR m.player_2_id = pr.player_id)
                 AND m.season = (SELECT MAX(season) FROM match)
+                AND m.player_1_score IS NOT NULL 
+                AND m.player_2_score IS NOT NULL
+                AND m.player_1_score != ''
+                AND m.player_2_score != ''
             )
             AND (pr.wins + pr.losses) >= 5
             ORDER BY pr.rating DESC
