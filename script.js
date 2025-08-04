@@ -818,10 +818,8 @@ function calculateBiggestMisses() {
                 predictedScore1 = Math.round(21 * (expectedRating1 / expectedRating2));
             }
             
-            // Calculate the miss (difference between predicted and actual score differences)
-            const actualDiff = Math.abs(score1 - score2);
-            const predictedDiff = Math.abs(predictedScore1 - predictedScore2);
-            const missDiff = Math.abs(actualDiff - predictedDiff);
+            // Calculate the miss (sum of absolute differences for each player)
+            const missDiff = Math.abs(score1 - predictedScore1) + Math.abs(score2 - predictedScore2);
             
             return {
                 name1, name2,
